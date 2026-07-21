@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="lazyBroken"
+             name="Lazy Broken"
+             namespace="urn:lazy-broken">
+
+  <!-- Never imported by main.dmn; its FEEL syntax error must not leak into
+       models that import something else from this directory. -->
+  <decision id="brokenDecision" name="Broken Decision">
+    <literalExpression id="brokenExpression">
+      <text>1 + + nope(</text>
+    </literalExpression>
+  </decision>
+</definitions>

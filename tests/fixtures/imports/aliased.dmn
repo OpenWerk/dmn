@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="importAliased"
+             name="Import Aliased"
+             namespace="urn:import-aliased">
+
+  <import namespace="urn:import-base" name="lib"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+  <import namespace="urn:import-base" name="backup"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+
+  <decision id="doubleAliased" name="Double Aliased">
+    <variable id="doubleAliasedVariable" name="Double Aliased" typeRef="number"/>
+    <informationRequirement id="aliasedNeedsBaseLevel">
+      <requiredDecision href="urn:import-base#baseLevel"/>
+    </informationRequirement>
+    <literalExpression id="doubleAliasedExpression">
+      <text>lib.Base Level + backup.Base Level</text>
+    </literalExpression>
+  </decision>
+</definitions>

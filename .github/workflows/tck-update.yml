@@ -1,0 +1,99 @@
+name: TCK corpus update
+
+# Tracks the DMN TCK corpus: once a month, check whether dmn-tck/tck has
+# moved past the pinned commit. If it has, re-pin, run both compliance
+# levels against the new corpus and open a pull request with the results —
+# the pass-rate gates of the regular CI then decide whether the re-pin can
+# merge as-is or needs conformance work first.
+
+on:
+  schedule:
+    - cron: '17 4 3 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  repin:
+    name: Re-pin DMN TCK corpus
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Detect newer corpus revision
+        id: detect
+        run: |
+          pinned=$(sed -n "s/^const TCK_COMMIT = '\([0-9a-f]\{40\}\)';$/\1/p" bin/fetch-tck)
+          latest=$(git ls-remote https://github.com/dmn-tck/tck.git refs/heads/master | cut -f1)
+          echo "pinned=$pinned" >> "$GITHUB_OUTPUT"
+          echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          if [ -z "$latest" ]; then
+            echo "could not resolve the latest TCK revision" >&2
+            exit 1
+          fi
+          if [ "$pinned" = "$latest" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "corpus already at $pinned"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "corpus moved: $pinned -> $latest"
+          fi
+
+      - name: Setup PHP
+        if: steps.detect.outputs.changed == 'true'
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: dom, libxml
+          coverage: none
+
+      - name: Install dependencies
+        if: steps.detect.outputs.changed == 'true'
+        run: composer install --prefer-dist --no-progress --no-interaction
+
+      - name: Re-pin and run both levels
+        if: steps.detect.outputs.changed == 'true'
+        id: run
+        run: |
+          sed -i "s/^const TCK_COMMIT = '.*';$/const TCK_COMMIT = '${{ steps.detect.outputs.latest }}';/" bin/fetch-tck
+          php bin/fetch-tck
+          {
+            echo 'summary<<EOF'
+            php bin/tck-runner --tck build/tck/TestCases --level 2 | tail -n 2
+            php bin/tck-runner --tck build/tck/TestCases --level 3 | head -n 1
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Open pull request
+        if: steps.detect.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: feature/tck-repin
+          title: 'Re-pin the DMN TCK corpus'
+          commit-message: |
+            Re-pin the DMN TCK corpus
+
+            Corpus moved from ${{ steps.detect.outputs.pinned }}
+            to ${{ steps.detect.outputs.latest }}.
+          author: 'André Schwarzer <andre@schwarzer.it>'
+          committer: 'André Schwarzer <andre@schwarzer.it>'
+          body: |
+            Automated corpus tracking: `dmn-tck/tck` moved past the pinned
+            revision.
+
+            - pinned: `${{ steps.detect.outputs.pinned }}`
+            - latest: `${{ steps.detect.outputs.latest }}`
+
+            Results on the new corpus:
+
+            ```
+            ${{ steps.run.outputs.summary }}
+            ```
+
+            The regular CI gates (CL2 = 100 %, CL3 >= 98 %) run on this pull
+            request; if they fail, the new corpus added cases that need
+            conformance work before the re-pin can merge. Remember to update
+            the README/TODO conformance numbers if they changed.

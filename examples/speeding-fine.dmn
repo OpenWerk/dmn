@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "Flashed by a speed camera — what is this going to cost?"
+
+  A (heavily simplified) fine schedule, loosely inspired by the German
+  catalogue. One decision table answers three questions at once — fine,
+  points and driving ban are separate output columns of the same rules:
+
+    | # | km/h over¹ | Where   | Fine   | Points | Ban       |
+    |===|============|=========|========|========|===========|
+    | 1 |   <= 0     |    -    |   0.00 |   0    | "none"    |  within tolerance
+    | 2 |  (0..10]   | "urban" |  30.00 |   0    | "none"    |
+    | 3 |  (0..10]   | "rural" |  20.00 |   0    | "none"    |
+    | 4 |  (10..25]  | "urban" | 115.00 |   1    | "none"    |
+    | 5 |  (10..25]  | "rural" | 100.00 |   1    | "none"    |
+    | 6 |   > 25     | "urban" | 260.00 |   2    | "1 month" |
+    | 7 |   > 25     | "rural" | 200.00 |   1    | "1 month" |
+
+    ¹ the first column is computed by the table itself:
+      measured speed - 3 - speed limit  (3 km/h measurement tolerance)
+
+  Hit policy UNIQUE — the ranges do not overlap, exactly one row applies.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="speedingFine"
+             name="Speeding Fine"
+             namespace="https://openwerk.example/dmn/speeding-fine">
+
+  <inputData id="measuredSpeedInput" name="measured speed">
+    <variable id="measuredSpeedVariable" name="measured speed" typeRef="number"/>
+  </inputData>
+
+  <inputData id="speedLimitInput" name="speed limit">
+    <variable id="speedLimitVariable" name="speed limit" typeRef="number"/>
+  </inputData>
+
+  <inputData id="locationInput" name="location">
+    <variable id="locationVariable" name="location" typeRef="string"/>
+  </inputData>
+
+  <decision id="penaltyDecision" name="Penalty">
+    <variable id="penaltyVariable" name="Penalty"/>
+    <informationRequirement id="penaltyNeedsMeasuredSpeed">
+      <requiredInput href="#measuredSpeedInput"/>
+    </informationRequirement>
+    <informationRequirement id="penaltyNeedsSpeedLimit">
+      <requiredInput href="#speedLimitInput"/>
+    </informationRequirement>
+    <informationRequirement id="penaltyNeedsLocation">
+      <requiredInput href="#locationInput"/>
+    </informationRequirement>
+    <decisionTable id="penaltyTable" hitPolicy="UNIQUE">
+      <input id="overColumn" label="km/h over the limit (after 3 km/h tolerance)">
+        <inputExpression id="overColumnExpression" typeRef="number">
+          <text>measured speed - 3 - speed limit</text>
+        </inputExpression>
+      </input>
+      <input id="locationColumn" label="Where">
+        <inputExpression id="locationColumnExpression" typeRef="string">
+          <text>location</text>
+        </inputExpression>
+        <inputValues id="locationAllowedValues">
+          <text>"urban","rural"</text>
+        </inputValues>
+      </input>
+      <output id="fineOutput" name="fine" typeRef="number"/>
+      <output id="pointsOutput" name="points" typeRef="number"/>
+      <output id="banOutput" name="ban" typeRef="string"/>
+      <rule id="withinTolerance">
+        <inputEntry id="withinToleranceOver"><text>&lt;= 0</text></inputEntry>
+        <inputEntry id="withinToleranceWhere"><text>-</text></inputEntry>
+        <outputEntry id="withinToleranceFine"><text>0.00</text></outputEntry>
+        <outputEntry id="withinTolerancePoints"><text>0</text></outputEntry>
+        <outputEntry id="withinToleranceBan"><text>"none"</text></outputEntry>
+      </rule>
+      <rule id="slightlyOverUrban">
+        <inputEntry id="slightlyOverUrbanOver"><text>(0..10]</text></inputEntry>
+        <inputEntry id="slightlyOverUrbanWhere"><text>"urban"</text></inputEntry>
+        <outputEntry id="slightlyOverUrbanFine"><text>30.00</text></outputEntry>
+        <outputEntry id="slightlyOverUrbanPoints"><text>0</text></outputEntry>
+        <outputEntry id="slightlyOverUrbanBan"><text>"none"</text></outputEntry>
+      </rule>
+      <rule id="slightlyOverRural">
+        <inputEntry id="slightlyOverRuralOver"><text>(0..10]</text></inputEntry>
+        <inputEntry id="slightlyOverRuralWhere"><text>"rural"</text></inputEntry>
+        <outputEntry id="slightlyOverRuralFine"><text>20.00</text></outputEntry>
+        <outputEntry id="slightlyOverRuralPoints"><text>0</text></outputEntry>
+        <outputEntry id="slightlyOverRuralBan"><text>"none"</text></outputEntry>
+      </rule>
+      <rule id="clearlyOverUrban">
+        <inputEntry id="clearlyOverUrbanOver"><text>(10..25]</text></inputEntry>
+        <inputEntry id="clearlyOverUrbanWhere"><text>"urban"</text></inputEntry>
+        <outputEntry id="clearlyOverUrbanFine"><text>115.00</text></outputEntry>
+        <outputEntry id="clearlyOverUrbanPoints"><text>1</text></outputEntry>
+        <outputEntry id="clearlyOverUrbanBan"><text>"none"</text></outputEntry>
+      </rule>
+      <rule id="clearlyOverRural">
+        <inputEntry id="clearlyOverRuralOver"><text>(10..25]</text></inputEntry>
+        <inputEntry id="clearlyOverRuralWhere"><text>"rural"</text></inputEntry>
+        <outputEntry id="clearlyOverRuralFine"><text>100.00</text></outputEntry>
+        <outputEntry id="clearlyOverRuralPoints"><text>1</text></outputEntry>
+        <outputEntry id="clearlyOverRuralBan"><text>"none"</text></outputEntry>
+      </rule>
+      <rule id="wayOverUrban">
+        <inputEntry id="wayOverUrbanOver"><text>&gt; 25</text></inputEntry>
+        <inputEntry id="wayOverUrbanWhere"><text>"urban"</text></inputEntry>
+        <outputEntry id="wayOverUrbanFine"><text>260.00</text></outputEntry>
+        <outputEntry id="wayOverUrbanPoints"><text>2</text></outputEntry>
+        <outputEntry id="wayOverUrbanBan"><text>"1 month"</text></outputEntry>
+      </rule>
+      <rule id="wayOverRural">
+        <inputEntry id="wayOverRuralOver"><text>&gt; 25</text></inputEntry>
+        <inputEntry id="wayOverRuralWhere"><text>"rural"</text></inputEntry>
+        <outputEntry id="wayOverRuralFine"><text>200.00</text></outputEntry>
+        <outputEntry id="wayOverRuralPoints"><text>1</text></outputEntry>
+        <outputEntry id="wayOverRuralBan"><text>"1 month"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

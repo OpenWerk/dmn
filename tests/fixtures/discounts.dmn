@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dmn:definitions xmlns:dmn="https://www.omg.org/spec/DMN/20191111/MODEL/"
+                 id="discounts"
+                 name="Discounts"
+                 namespace="https://openwerk.example/dmn/discounts">
+
+  <dmn:inputData id="orderInput" name="order">
+    <dmn:variable id="orderVariable" name="order"/>
+  </dmn:inputData>
+
+  <dmn:decision id="totalDiscount" name="Total Discount">
+    <dmn:variable id="totalDiscountVariable" name="Total Discount" typeRef="number"/>
+    <dmn:informationRequirement id="totalDiscountRequirement">
+      <dmn:requiredInput href="#orderInput"/>
+    </dmn:informationRequirement>
+    <dmn:decisionTable id="totalDiscountTable" hitPolicy="COLLECT" aggregation="SUM">
+      <dmn:input id="totalInput" label="Total">
+        <dmn:inputExpression id="totalInputExpression" typeRef="number">
+          <dmn:text>order.total</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:input id="itemsInput" label="Items">
+        <dmn:inputExpression id="itemsInputExpression" typeRef="number">
+          <dmn:text>order.items</dmn:text>
+        </dmn:inputExpression>
+      </dmn:input>
+      <dmn:output id="discountOutput" name="discount" typeRef="number"/>
+      <dmn:rule id="bigOrderRule">
+        <dmn:inputEntry id="bigOrderTotal"><dmn:text>&gt; 100</dmn:text></dmn:inputEntry>
+        <dmn:inputEntry id="bigOrderItems"><dmn:text>-</dmn:text></dmn:inputEntry>
+        <dmn:outputEntry id="bigOrderDiscount"><dmn:text>5</dmn:text></dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="manyItemsRule">
+        <dmn:inputEntry id="manyItemsTotal"><dmn:text>-</dmn:text></dmn:inputEntry>
+        <dmn:inputEntry id="manyItemsItems"><dmn:text>&gt; 10</dmn:text></dmn:inputEntry>
+        <dmn:outputEntry id="manyItemsDiscount"><dmn:text>3</dmn:text></dmn:outputEntry>
+      </dmn:rule>
+      <dmn:rule id="baseRule">
+        <dmn:inputEntry id="baseTotal"><dmn:text>-</dmn:text></dmn:inputEntry>
+        <dmn:inputEntry id="baseItems"><dmn:text>-</dmn:text></dmn:inputEntry>
+        <dmn:outputEntry id="baseDiscount"><dmn:text>1</dmn:text></dmn:outputEntry>
+      </dmn:rule>
+    </dmn:decisionTable>
+  </dmn:decision>
+</dmn:definitions>

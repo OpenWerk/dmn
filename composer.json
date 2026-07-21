@@ -1,0 +1,72 @@
+{
+    "name": "openwerk/dmn",
+    "description": "A DMN decision engine for PHP: decision tables, (S-)FEEL and decision requirement graphs, implemented as a pure library with no framework dependencies.",
+    "license": "MIT",
+    "type": "library",
+    "keywords": [
+        "dmn",
+        "decision",
+        "decision-table",
+        "decision-engine",
+        "feel",
+        "rules",
+        "business-rules"
+    ],
+    "authors": [
+        {
+            "name": "OpenWerk - SCHWARZER digital",
+            "email": "openwerk@schwarzer.digital"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "ext-dom": "*",
+        "ext-libxml": "*",
+        "brick/math": "^0.12 || ^0.13"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^12.2",
+        "squizlabs/php_codesniffer": "^3.13 || ^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "OpenWerk\\DecisionModelAndNotation\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "OpenWerk\\DecisionModelAndNotation\\Tests\\": "tests/"
+        }
+    },
+    "bin": [
+        "bin/tck-runner"
+    ],
+    "config": {
+        "sort-packages": true
+    },
+    "scripts": {
+        "check": [
+            "@cs",
+            "@phpstan",
+            "@test"
+        ],
+        "cs": "phpcs",
+        "cs-fix": "phpcbf",
+        "phpstan": "phpstan analyse --memory-limit=1G",
+        "tck": "php bin/tck-runner --tck build/tck/TestCases --level 2 --details",
+        "tck:fetch": "php bin/fetch-tck",
+        "tck:results": "php bin/tck-runner --tck build/tck/TestCases --level all --test-results build/TestResults",
+        "test": "phpunit"
+    },
+    "scripts-descriptions": {
+        "check": "Runs the full quality gate: coding standard, static analysis and tests.",
+        "cs": "Checks PSR-12 coding standard compliance.",
+        "cs-fix": "Fixes PSR-12 coding standard violations where possible.",
+        "phpstan": "Runs static analysis.",
+        "tck": "Runs the DMN TCK compliance level 2 suite against the engine.",
+        "tck:fetch": "Fetches the pinned DMN TCK corpus into build/tck.",
+        "tck:results": "Runs both compliance levels and writes the official TCK submission layout to build/TestResults.",
+        "test": "Runs the test suite."
+    }
+}

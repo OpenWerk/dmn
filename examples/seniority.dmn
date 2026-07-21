@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  HR's shared seniority rules — a model OTHER models import (see
+  christmas-bonus.dmn, which uses it under the import name "hr").
+
+    | # | Years of service | Level         |
+    |===|==================|===============|
+    | 1 |      < 5         | "junior"      |
+    | 2 |    [5..15)       | "established" |
+    | 3 |     >= 15        | "veteran"     |
+
+  Imports are matched by the model namespace below; Dmn::fromFile()
+  resolves them against the sibling .dmn files of the same directory.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="seniority"
+             name="Seniority"
+             namespace="https://openwerk.example/dmn/seniority">
+
+  <inputData id="serviceYearsInput" name="years of service">
+    <variable id="serviceYearsVariable" name="years of service" typeRef="number"/>
+  </inputData>
+
+  <decision id="seniorityLevel" name="Seniority Level">
+    <variable id="seniorityLevelVariable" name="Seniority Level" typeRef="string"/>
+    <informationRequirement id="seniorityNeedsYears">
+      <requiredInput href="#serviceYearsInput"/>
+    </informationRequirement>
+    <decisionTable id="seniorityTable" hitPolicy="UNIQUE">
+      <input id="yearsColumn" label="Years">
+        <inputExpression id="yearsColumnExpression" typeRef="number">
+          <text>years of service</text>
+        </inputExpression>
+      </input>
+      <output id="levelOutput" name="level" typeRef="string"/>
+      <rule id="juniorLevel">
+        <inputEntry id="juniorLevelYears"><text>&lt; 5</text></inputEntry>
+        <outputEntry id="juniorLevelResult"><text>"junior"</text></outputEntry>
+      </rule>
+      <rule id="establishedLevel">
+        <inputEntry id="establishedLevelYears"><text>[5..15)</text></inputEntry>
+        <outputEntry id="establishedLevelResult"><text>"established"</text></outputEntry>
+      </rule>
+      <rule id="veteranLevel">
+        <inputEntry id="veteranLevelYears"><text>&gt;= 15</text></inputEntry>
+        <outputEntry id="veteranLevelResult"><text>"veteran"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

@@ -1,0 +1,342 @@
+#!/usr/bin/env php
+<?php
+
+// phpcs:disable PSR1.Files.SideEffects
+
+declare(strict_types=1);
+
+use OpenWerk\DecisionModelAndNotation\Dmn;
+use OpenWerk\DecisionModelAndNotation\DmnModel;
+
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+/**
+ * @return never
+ */
+function bench_usage(int $exitCode): void
+{
+    $usage = <<<'TXT'
+        Benchmark harness for openwerk/dmn: parse time, cache restore time and
+        hot-path decision evaluation over the models in examples/.
+
+        Usage:
+          bin/benchmark [options]
+
+        Options:
+          --seconds <s>    measuring budget per workload in seconds (default: 1.0)
+          --filter <text>  only workloads whose name contains this substring
+          --json           machine-readable output (one JSON object per line)
+          --help           show this help
+
+        Numbers are wall-clock time of the fastest measured batch, so treat
+        them as the attainable per-operation cost on this machine, not as an
+        average under load. Run on an idle machine; higher --seconds gives
+        steadier numbers.
+
+        Exit codes: 0 ok, 1 a workload produced an unexpected result, 2 usage error.
+        TXT;
+
+    fwrite($exitCode === 0 ? STDOUT : STDERR, $usage . PHP_EOL);
+    exit($exitCode);
+}
+
+/**
+ * Measures one operation: calibrates a batch size that runs for at least
+ * ~40 ms, then repeats batches until the time budget is spent and reports
+ * the fastest batch (least scheduler noise).
+ *
+ * @param \Closure(): void $operation
+ *
+ * @return array{us_per_op: float, ops_per_sec: float, ops: int}
+ */
+function bench_measure(\Closure $operation, float $seconds): array
+{
+    // Warm up caches (autoloader, realpath cache, memoized catalogs).
+    $operation();
+    $operation();
+
+    $batchSize = 1;
+
+    while (true) {
+        $start = hrtime(true);
+
+        for ($i = 0; $i < $batchSize; $i++) {
+            $operation();
+        }
+
+        $elapsed = hrtime(true) - $start;
+
+        if ($elapsed >= 40_000_000 || $batchSize >= 1_000_000) {
+            break;
+        }
+
+        $batchSize *= 4;
+    }
+
+    $bestNs = $elapsed;
+    $totalOps = $batchSize;
+    $budgetNs = (int) ($seconds * 1e9);
+    $spentNs = $elapsed;
+
+    while ($spentNs < $budgetNs) {
+        $start = hrtime(true);
+
+        for ($i = 0; $i < $batchSize; $i++) {
+            $operation();
+        }
+
+        $elapsed = hrtime(true) - $start;
+        $spentNs += $elapsed;
+        $totalOps += $batchSize;
+
+        if ($elapsed < $bestNs) {
+            $bestNs = $elapsed;
+        }
+    }
+
+    $usPerOp = $bestNs / 1_000.0 / $batchSize;
+
+    return [
+        'us_per_op' => $usPerOp,
+        'ops_per_sec' => $usPerOp > 0.0 ? 1e6 / $usPerOp : 0.0,
+        'ops' => $totalOps,
+    ];
+}
+
+function bench_report(string $kind, string $name, float $usPerOp, float $opsPerSec, int $ops, bool $json): void
+{
+    if ($json) {
+        echo json_encode([
+            'kind' => $kind,
+            'name' => $name,
+            'us_per_op' => round($usPerOp, 3),
+            'ops_per_sec' => round($opsPerSec, 1),
+            'ops' => $ops,
+        ], JSON_THROW_ON_ERROR), PHP_EOL;
+
+        return;
+    }
+
+    $perOp = $usPerOp >= 1000.0
+        ? sprintf('%8.2f ms/op', $usPerOp / 1000.0)
+        : sprintf('%8.1f us/op', $usPerOp);
+
+    printf("%-8s %-42s %s %10s op/s\n", $kind, $name, $perOp, number_format($opsPerSec, 0, '.', ' '));
+}
+
+/**
+ * Renders an evaluation result value into a short comparable string.
+ */
+function bench_stringify(mixed $value): string
+{
+    if ($value instanceof \Stringable) {
+        return (string) $value;
+    }
+
+    if (\is_array($value)) {
+        return json_encode(array_map(bench_stringify(...), $value), JSON_THROW_ON_ERROR);
+    }
+
+    return var_export($value, true);
+}
+
+$options = getopt('', ['seconds:', 'filter:', 'json', 'help']);
+
+if ($options === false || isset($options['help'])) {
+    bench_usage($options === false ? 2 : 0);
+}
+
+$seconds = is_string($options['seconds'] ?? null) ? (float) $options['seconds'] : 1.0;
+$filter = is_string($options['filter'] ?? null) ? $options['filter'] : null;
+$json = isset($options['json']);
+
+if ($seconds <= 0.0) {
+    fwrite(STDERR, '--seconds must be a positive number' . PHP_EOL);
+    exit(2);
+}
+
+$examplesDir = dirname(__DIR__) . '/examples';
+$fixturesDir = dirname(__DIR__) . '/tests/fixtures';
+
+/**
+ * The evaluation workloads: model file, decision, inputs, imported inputs
+ * and the expected result (stringified), so a silently broken engine cannot
+ * produce impressive numbers. Models cover single tables, decision chains,
+ * multi-output tables, COLLECT aggregation, temporal logic, imports and
+ * expression-heavy literal logic (filters, iteration, context building).
+ */
+$evalWorkloads = [
+    [
+        'file' => 'shipping-fee.dmn',
+        'decision' => 'Shipping Fee',
+        'inputs' => ['destination' => 'europe', 'cart total' => 75.00],
+        'importedInputs' => [],
+        'expected' => '12.90',
+        'label' => 'shipping-fee: Shipping Fee',
+    ],
+    [
+        'file' => 'gym-membership.dmn',
+        'decision' => 'Monthly Fee',
+        'inputs' => ['age' => 20, 'student' => true, 'contract months' => 12],
+        'importedInputs' => [],
+        'expected' => '24.90',
+        'label' => 'gym-membership: Monthly Fee (chain)',
+    ],
+    [
+        'file' => 'speeding-fine.dmn',
+        'decision' => 'Penalty',
+        'inputs' => ['measured speed' => 82, 'speed limit' => 50, 'location' => 'urban'],
+        'importedInputs' => [],
+        'expected' => '{"fine":"260.00","points":"2","ban":"\'1 month\'"}',
+        'label' => 'speeding-fine: Penalty (multi-output)',
+    ],
+    [
+        'file' => 'vacation-days.dmn',
+        'decision' => 'Vacation Days',
+        'inputs' => ['age' => 61, 'years of service' => 33],
+        'importedInputs' => [],
+        'expected' => '34',
+        'label' => 'vacation-days: Vacation Days (collect)',
+    ],
+    [
+        'file' => 'parking-garage.dmn',
+        'decision' => 'Parking Fee',
+        'inputs' => [
+            'entry' => new DateTimeImmutable('2026-03-06 15:00'),
+            'exit' => new DateTimeImmutable('2026-03-08 18:30'),
+        ],
+        'importedInputs' => [],
+        'expected' => '30.00',
+        'label' => 'parking-garage: Parking Fee (temporal)',
+    ],
+    [
+        'file' => 'christmas-bonus.dmn',
+        'decision' => 'Christmas Bonus',
+        'inputs' => ['monthly salary' => 3800.00],
+        'importedInputs' => ['https://openwerk.example/dmn/seniority' => ['years of service' => 17]],
+        'expected' => '3040.000000000000000000000000000000',
+        'label' => 'christmas-bonus: Christmas Bonus (import)',
+    ],
+    [
+        'file' => 'scoring.dmn',
+        'dir' => $fixturesDir,
+        'decision' => 'Risk Score',
+        'inputs' => [
+            'applicant' => ['age' => 41, 'income' => 52000],
+            'transactions' => [12, 250, 80, 999, 3, 141],
+        ],
+        'importedInputs' => [],
+        'expected' => '60.85',
+        'label' => 'scoring: Risk Score (expressions)',
+    ],
+];
+
+if (!$json) {
+    printf(
+        "openwerk/dmn benchmark, PHP %s, opcache %s%s",
+        PHP_VERSION,
+        \function_exists('opcache_get_status') && opcache_get_status(false) !== false ? 'on' : 'off',
+        PHP_EOL . PHP_EOL,
+    );
+}
+
+$failures = 0;
+
+// Parse time: XML to evaluatable model, including validation and, for the
+// christmas-bonus model, import resolution against the sibling files.
+foreach (['gym-membership.dmn', 'speeding-fine.dmn', 'christmas-bonus.dmn'] as $file) {
+    $name = 'parse ' . $file;
+
+    if ($filter !== null && !str_contains($name, $filter)) {
+        continue;
+    }
+
+    $path = $examplesDir . '/' . $file;
+    $model = Dmn::fromFile($path);
+
+    if ($model->hasValidationErrors()) {
+        fwrite(STDERR, sprintf('%s has validation errors; not benchmarking a broken model%s', $file, PHP_EOL));
+        $failures++;
+        continue;
+    }
+
+    $measurement = bench_measure(static function () use ($path): void {
+        Dmn::fromFile($path);
+    }, $seconds);
+
+    bench_report('parse', $file, $measurement['us_per_op'], $measurement['ops_per_sec'], $measurement['ops'], $json);
+}
+
+// Cache restore: the documented parse-once-then-unserialize hot path.
+foreach (['gym-membership.dmn', 'speeding-fine.dmn'] as $file) {
+    $name = 'restore ' . $file;
+
+    if ($filter !== null && !str_contains($name, $filter)) {
+        continue;
+    }
+
+    $serialized = serialize(Dmn::fromFile($examplesDir . '/' . $file));
+
+    $measurement = bench_measure(static function () use ($serialized): void {
+        unserialize($serialized);
+    }, $seconds);
+
+    bench_report(
+        'restore',
+        $file,
+        $measurement['us_per_op'],
+        $measurement['ops_per_sec'],
+        $measurement['ops'],
+        $json,
+    );
+}
+
+// Hot evaluation: one parsed model, many evaluations.
+foreach ($evalWorkloads as $workload) {
+    if ($filter !== null && !str_contains('eval ' . $workload['label'], $filter)) {
+        continue;
+    }
+
+    $model = Dmn::fromFile(($workload['dir'] ?? $examplesDir) . '/' . $workload['file']);
+    $decision = $workload['decision'];
+    $inputs = $workload['inputs'];
+    $importedInputs = $workload['importedInputs'];
+
+    $result = $model->evaluateDecision($decision, $inputs, $importedInputs);
+    $actual = bench_stringify($result->value());
+
+    if ($actual !== $workload['expected'] || $result->hasErrors()) {
+        fwrite(STDERR, sprintf(
+            '%s: expected %s, got %s; not benchmarking a broken workload%s',
+            $workload['label'],
+            var_export($workload['expected'], true),
+            var_export($actual, true),
+            PHP_EOL,
+        ));
+        $failures++;
+        continue;
+    }
+
+    $measurement = bench_measure(
+        static function () use ($model, $decision, $inputs, $importedInputs): void {
+            $model->evaluateDecision($decision, $inputs, $importedInputs);
+        },
+        $seconds,
+    );
+
+    bench_report(
+        'eval',
+        $workload['label'],
+        $measurement['us_per_op'],
+        $measurement['ops_per_sec'],
+        $measurement['ops'],
+        $json,
+    );
+}
+
+exit($failures === 0 ? 0 : 1);

@@ -1,0 +1,145 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "What will the gym cost me per month?" — answered like the sign at the
+  counter: first figure out who you are, then look up your rate.
+
+  Decision 1 — Member Category (hit policy FIRST: first matching row wins,
+  so a 20-year-old student is "student", not "adult"):
+
+    | # | Age   | Student | Category  |
+    |===|=======|=========|===========|
+    | 1 | < 16  |    -    | "junior"  |
+    | 2 |   -   |  true   | "student" |
+    | 3 | >= 65 |    -    | "senior"  |
+    | 4 |   -   |    -    | "adult"   |  everyone else
+
+  Decision 2 — Monthly Fee (depends on decision 1; hit policy UNIQUE):
+
+    | # | Category  | Contract months | Fee   |
+    |===|===========|=================|=======|
+    | 1 | "junior"  |        -        | 19.90 |
+    | 2 | "student" |        -        | 24.90 |
+    | 3 | "senior"  |        -        | 24.90 |
+    | 4 | "adult"   |        1        | 44.90 |
+    | 5 | "adult"   |       12        | 34.90 |
+    | 6 | "adult"   |       24        | 29.90 |
+
+  Contract months only allows 1, 12 or 24 — the terms the gym actually
+  offers.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="gymMembership"
+             name="Gym Membership"
+             namespace="https://openwerk.example/dmn/gym-membership">
+
+  <inputData id="ageInput" name="age">
+    <variable id="ageVariable" name="age" typeRef="number"/>
+  </inputData>
+
+  <inputData id="studentInput" name="student">
+    <variable id="studentVariable" name="student" typeRef="boolean"/>
+  </inputData>
+
+  <inputData id="contractMonthsInput" name="contract months">
+    <variable id="contractMonthsVariable" name="contract months" typeRef="number"/>
+  </inputData>
+
+  <decision id="memberCategoryDecision" name="Member Category">
+    <variable id="memberCategoryVariable" name="Member Category" typeRef="string"/>
+    <informationRequirement id="memberCategoryNeedsAge">
+      <requiredInput href="#ageInput"/>
+    </informationRequirement>
+    <informationRequirement id="memberCategoryNeedsStudent">
+      <requiredInput href="#studentInput"/>
+    </informationRequirement>
+    <decisionTable id="memberCategoryTable" hitPolicy="FIRST">
+      <input id="categoryAgeColumn" label="Age">
+        <inputExpression id="categoryAgeColumnExpression" typeRef="number">
+          <text>age</text>
+        </inputExpression>
+      </input>
+      <input id="categoryStudentColumn" label="Student">
+        <inputExpression id="categoryStudentColumnExpression" typeRef="boolean">
+          <text>student</text>
+        </inputExpression>
+      </input>
+      <output id="categoryOutput" name="category" typeRef="string"/>
+      <rule id="juniorCategory">
+        <inputEntry id="juniorCategoryAge"><text>&lt; 16</text></inputEntry>
+        <inputEntry id="juniorCategoryStudent"><text>-</text></inputEntry>
+        <outputEntry id="juniorCategoryResult"><text>"junior"</text></outputEntry>
+      </rule>
+      <rule id="studentCategory">
+        <inputEntry id="studentCategoryAge"><text>-</text></inputEntry>
+        <inputEntry id="studentCategoryStudent"><text>true</text></inputEntry>
+        <outputEntry id="studentCategoryResult"><text>"student"</text></outputEntry>
+      </rule>
+      <rule id="seniorCategory">
+        <inputEntry id="seniorCategoryAge"><text>&gt;= 65</text></inputEntry>
+        <inputEntry id="seniorCategoryStudent"><text>-</text></inputEntry>
+        <outputEntry id="seniorCategoryResult"><text>"senior"</text></outputEntry>
+      </rule>
+      <rule id="adultCategory">
+        <inputEntry id="adultCategoryAge"><text>-</text></inputEntry>
+        <inputEntry id="adultCategoryStudent"><text>-</text></inputEntry>
+        <outputEntry id="adultCategoryResult"><text>"adult"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="monthlyFeeDecision" name="Monthly Fee">
+    <variable id="monthlyFeeVariable" name="Monthly Fee" typeRef="number"/>
+    <informationRequirement id="monthlyFeeNeedsCategory">
+      <requiredDecision href="#memberCategoryDecision"/>
+    </informationRequirement>
+    <informationRequirement id="monthlyFeeNeedsContractMonths">
+      <requiredInput href="#contractMonthsInput"/>
+    </informationRequirement>
+    <decisionTable id="monthlyFeeTable" hitPolicy="UNIQUE">
+      <input id="feeCategoryColumn" label="Category">
+        <inputExpression id="feeCategoryColumnExpression" typeRef="string">
+          <text>Member Category</text>
+        </inputExpression>
+      </input>
+      <input id="feeMonthsColumn" label="Contract months">
+        <inputExpression id="feeMonthsColumnExpression" typeRef="number">
+          <text>contract months</text>
+        </inputExpression>
+        <inputValues id="feeMonthsAllowedValues">
+          <text>1,12,24</text>
+        </inputValues>
+      </input>
+      <output id="feeOutput" name="fee" typeRef="number"/>
+      <rule id="juniorFee">
+        <inputEntry id="juniorFeeCategory"><text>"junior"</text></inputEntry>
+        <inputEntry id="juniorFeeMonths"><text>-</text></inputEntry>
+        <outputEntry id="juniorFeeResult"><text>19.90</text></outputEntry>
+      </rule>
+      <rule id="studentFee">
+        <inputEntry id="studentFeeCategory"><text>"student"</text></inputEntry>
+        <inputEntry id="studentFeeMonths"><text>-</text></inputEntry>
+        <outputEntry id="studentFeeResult"><text>24.90</text></outputEntry>
+      </rule>
+      <rule id="seniorFee">
+        <inputEntry id="seniorFeeCategory"><text>"senior"</text></inputEntry>
+        <inputEntry id="seniorFeeMonths"><text>-</text></inputEntry>
+        <outputEntry id="seniorFeeResult"><text>24.90</text></outputEntry>
+      </rule>
+      <rule id="adultFlexFee">
+        <inputEntry id="adultFlexFeeCategory"><text>"adult"</text></inputEntry>
+        <inputEntry id="adultFlexFeeMonths"><text>1</text></inputEntry>
+        <outputEntry id="adultFlexFeeResult"><text>44.90</text></outputEntry>
+      </rule>
+      <rule id="adultYearFee">
+        <inputEntry id="adultYearFeeCategory"><text>"adult"</text></inputEntry>
+        <inputEntry id="adultYearFeeMonths"><text>12</text></inputEntry>
+        <outputEntry id="adultYearFeeResult"><text>34.90</text></outputEntry>
+      </rule>
+      <rule id="adultTwoYearFee">
+        <inputEntry id="adultTwoYearFeeCategory"><text>"adult"</text></inputEntry>
+        <inputEntry id="adultTwoYearFeeMonths"><text>24</text></inputEntry>
+        <outputEntry id="adultTwoYearFeeResult"><text>29.90</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="scoring"
+             name="Scoring"
+             namespace="urn:scoring">
+
+  <!-- Expression-heavy benchmark model: literal expressions with filters,
+       iteration, context building and arithmetic, deliberately without
+       decision tables (the example models cover those). -->
+
+  <inputData id="applicantInput" name="applicant">
+    <variable id="applicantVariable" name="applicant"/>
+  </inputData>
+
+  <inputData id="transactionsInput" name="transactions">
+    <variable id="transactionsVariable" name="transactions"/>
+  </inputData>
+
+  <decision id="transactionStats" name="Transaction Stats">
+    <variable id="transactionStatsVariable" name="Transaction Stats"/>
+    <informationRequirement id="statsNeedTransactions">
+      <requiredInput href="#transactionsInput"/>
+    </informationRequirement>
+    <literalExpression id="transactionStatsExpression">
+      <text>{
+        count: count(transactions),
+        total: sum(transactions),
+        large: transactions[item &gt; 100]
+      }</text>
+    </literalExpression>
+  </decision>
+
+  <decision id="riskScore" name="Risk Score">
+    <variable id="riskScoreVariable" name="Risk Score"/>
+    <informationRequirement id="scoreNeedsApplicant">
+      <requiredInput href="#applicantInput"/>
+    </informationRequirement>
+    <informationRequirement id="scoreNeedsTransactions">
+      <requiredInput href="#transactionsInput"/>
+    </informationRequirement>
+    <informationRequirement id="scoreNeedsStats">
+      <requiredDecision href="#transactionStats"/>
+    </informationRequirement>
+    <literalExpression id="riskScoreExpression">
+      <text>(if applicant.age &lt; 25 then 15 else 5)
+        + sum(for t in transactions return t * 0.01)
+        + count(Transaction Stats.large) * 7
+        + (if Transaction Stats.total &gt; 1000 then 20 else 0)</text>
+    </literalExpression>
+  </decision>
+</definitions>

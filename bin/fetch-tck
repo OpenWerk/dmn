@@ -1,0 +1,72 @@
+#!/usr/bin/env php
+<?php
+
+// phpcs:disable PSR1.Files.SideEffects
+
+declare(strict_types=1);
+
+/*
+ * Fetches the DMN TCK corpus (github.com/dmn-tck/tck) into build/tck,
+ * pinned to a specific commit. The corpus is consumed at build/test time
+ * and never redistributed inside this package (see the TCK's Apache-2.0
+ * license and the attribution note in the README).
+ */
+
+const TCK_REPOSITORY = 'https://github.com/dmn-tck/tck';
+const TCK_COMMIT = '0dbcaf9b98bc3af4e36d44a7aed95e9e85703a13';
+const TCK_DIR = 'build/tck';
+
+/**
+ * @param list<string> $command
+ */
+function tck_git(array $command, bool $allowFailure = false): bool
+{
+    $escaped = array_map(escapeshellarg(...), $command);
+    $line = 'git ' . implode(' ', $escaped) . ' 2>&1';
+    exec($line, $output, $exitCode);
+
+    if ($exitCode !== 0 && !$allowFailure) {
+        fwrite(STDERR, sprintf(
+            "command failed (%d): git %s%s%s%s",
+            $exitCode,
+            implode(' ', $escaped),
+            PHP_EOL,
+            implode(PHP_EOL, $output),
+            PHP_EOL,
+        ));
+        exit(1);
+    }
+
+    return $exitCode === 0;
+}
+
+/**
+ * @return string|null
+ */
+function tck_head(): ?string
+{
+    exec('git -C ' . escapeshellarg(TCK_DIR) . ' rev-parse HEAD 2>/dev/null', $output, $exitCode);
+
+    return $exitCode === 0 ? trim(implode("\n", $output)) : null;
+}
+
+if (tck_head() === TCK_COMMIT) {
+    echo 'TCK corpus already at ', TCK_COMMIT, PHP_EOL;
+    exit(0);
+}
+
+if (!is_dir(TCK_DIR) && !mkdir(TCK_DIR, 0777, true) && !is_dir(TCK_DIR)) {
+    fwrite(STDERR, 'cannot create ' . TCK_DIR . PHP_EOL);
+    exit(1);
+}
+
+if (!is_dir(TCK_DIR . '/.git')) {
+    tck_git(['-C', TCK_DIR, 'init', '--quiet']);
+    tck_git(['-C', TCK_DIR, 'remote', 'add', 'origin', TCK_REPOSITORY]);
+}
+
+echo 'fetching TCK corpus at ', TCK_COMMIT, ' ...', PHP_EOL;
+tck_git(['-C', TCK_DIR, 'fetch', '--depth', '1', 'origin', TCK_COMMIT]);
+tck_git(['-C', TCK_DIR, 'checkout', '--quiet', '--force', TCK_COMMIT]);
+
+echo 'TCK corpus ready in ', TCK_DIR, PHP_EOL;

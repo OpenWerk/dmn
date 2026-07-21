@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="importMain"
+             name="Import Main"
+             namespace="urn:import-main">
+
+  <import namespace="urn:import-base" name="lib"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+
+  <decision id="doubledLevel" name="Doubled Level">
+    <variable id="doubledLevelVariable" name="Doubled Level" typeRef="number"/>
+    <informationRequirement id="doubledNeedsBaseLevel">
+      <requiredDecision href="urn:import-base#baseLevel"/>
+    </informationRequirement>
+    <literalExpression id="doubledExpression">
+      <text>lib.Base Level * 2</text>
+    </literalExpression>
+  </decision>
+</definitions>

@@ -1,0 +1,125 @@
+#!/usr/bin/env php
+<?php
+
+// phpcs:disable PSR1.Files.SideEffects
+
+declare(strict_types=1);
+
+use OpenWerk\DecisionModelAndNotation\Tck\TckReport;
+use OpenWerk\DecisionModelAndNotation\Tck\TckRunner;
+use OpenWerk\DecisionModelAndNotation\Tck\TckSubmission;
+
+foreach ([__DIR__ . '/../vendor/autoload.php', __DIR__ . '/../../../autoload.php'] as $autoload) {
+    if (is_file($autoload)) {
+        require $autoload;
+        break;
+    }
+}
+
+/**
+ * @return never
+ */
+function tck_usage(int $exitCode): void
+{
+    $usage = <<<'TXT'
+        DMN TCK conformance runner for openwerk/dmn
+
+        Usage:
+          bin/tck-runner [options]
+
+        Options:
+          --tck <dir>            TCK TestCases directory (default: build/tck/TestCases)
+          --level <2|3|all>      compliance level(s) to run (default: 2)
+          --suite <pattern>      only suites whose directory name matches the fnmatch pattern
+          --csv <file>           write the TCK result CSV to this path
+          --test-results <dir>   write the official TCK submission layout below this
+                                 directory (<dir>/OpenWerk/<version>/tck_results.csv
+                                 plus tck_results.properties with the runner metadata)
+          --product-version <v>  product version recorded in the submission (default: dev)
+          --min-pass-rate <pct>  exit non-zero when the pass rate falls below this (default: 0)
+          --details              print expected/actual details for non-passing cases
+          --help                 show this help
+
+        Exit codes: 0 pass-rate met, 1 pass-rate not met, 2 usage/setup error.
+        TXT;
+
+    fwrite($exitCode === 0 ? STDOUT : STDERR, $usage . PHP_EOL);
+    exit($exitCode);
+}
+
+$options = getopt('', [
+    'tck:',
+    'level:',
+    'suite:',
+    'csv:',
+    'test-results:',
+    'product-version:',
+    'min-pass-rate:',
+    'details',
+    'help',
+]);
+
+if ($options === false || isset($options['help'])) {
+    tck_usage($options === false ? 2 : 0);
+}
+
+$tckDir = is_string($options['tck'] ?? null) ? $options['tck'] : 'build/tck/TestCases';
+$levelOption = is_string($options['level'] ?? null) ? $options['level'] : '2';
+$suiteFilter = is_string($options['suite'] ?? null) ? $options['suite'] : null;
+$csvPath = is_string($options['csv'] ?? null) ? $options['csv'] : null;
+$testResultsDir = is_string($options['test-results'] ?? null) ? $options['test-results'] : null;
+$productVersion = is_string($options['product-version'] ?? null) ? $options['product-version'] : 'dev';
+$minPassRate = is_string($options['min-pass-rate'] ?? null) ? (float) $options['min-pass-rate'] : 0.0;
+$withDetails = isset($options['details']);
+
+$levelDirs = match ($levelOption) {
+    '2' => ['compliance-level-2'],
+    '3' => ['compliance-level-3'],
+    'all', '2,3' => ['compliance-level-2', 'compliance-level-3'],
+    default => null,
+};
+
+if ($levelDirs === null) {
+    fwrite(STDERR, sprintf('unknown --level %s (use 2, 3 or all)%s', var_export($levelOption, true), PHP_EOL));
+    exit(2);
+}
+
+if (!is_dir($tckDir)) {
+    fwrite(STDERR, sprintf(
+        'TCK TestCases directory %s not found — run "composer tck:fetch" first%s',
+        var_export($tckDir, true),
+        PHP_EOL,
+    ));
+    exit(2);
+}
+
+try {
+    $report = (new TckRunner())->run($tckDir, $levelDirs, $suiteFilter);
+} catch (Throwable $exception) {
+    fwrite(STDERR, $exception->getMessage() . PHP_EOL);
+    exit(2);
+}
+
+echo $report->renderSummary($withDetails), PHP_EOL;
+
+if ($csvPath !== null) {
+    $report->writeCsv($csvPath);
+    echo 'results written to ', $csvPath, PHP_EOL;
+}
+
+if ($testResultsDir !== null) {
+    $directory = TckSubmission::write($report, $testResultsDir, $productVersion, date('Y-m-d'));
+    echo 'TCK submission written to ', $directory, PHP_EOL;
+}
+
+if ($report->passRate() < $minPassRate) {
+    fwrite(STDERR, sprintf(
+        'pass rate %.1f%% is below the required minimum of %.1f%%%s',
+        $report->passRate(),
+        $minPassRate,
+        PHP_EOL,
+    ));
+    exit(1);
+}
+
+exit(0);

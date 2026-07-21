@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The tariff sign at the parking garage exit:
+
+    first 30 minutes ......... free
+    up to 2 hours ............ 3.00
+    up to 6 hours ............ 8.00
+    up to 24 hours ........... 15.00  (day ticket)
+    longer ................... 30.00  (long-stay flat)
+
+  Two chained decisions:
+
+    Parking Duration = exit - entry          (a FEEL duration)
+    Parking Fee      = first matching row of the tariff table
+
+  Hit policy FIRST reads the table exactly like the sign: top to bottom,
+  the first row that fits is what you pay. The rows compare the stay
+  against duration literals like duration("PT30M") — no minute arithmetic
+  anywhere.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="parkingGarage"
+             name="Parking Garage"
+             namespace="https://openwerk.example/dmn/parking-garage">
+
+  <inputData id="entryInput" name="entry">
+    <variable id="entryVariable" name="entry" typeRef="date and time"/>
+  </inputData>
+
+  <inputData id="exitInput" name="exit">
+    <variable id="exitVariable" name="exit" typeRef="date and time"/>
+  </inputData>
+
+  <decision id="parkingDurationDecision" name="Parking Duration">
+    <variable id="parkingDurationVariable" name="Parking Duration" typeRef="days and time duration"/>
+    <informationRequirement id="parkingDurationNeedsEntry">
+      <requiredInput href="#entryInput"/>
+    </informationRequirement>
+    <informationRequirement id="parkingDurationNeedsExit">
+      <requiredInput href="#exitInput"/>
+    </informationRequirement>
+    <literalExpression id="parkingDurationExpression">
+      <text>exit - entry</text>
+    </literalExpression>
+  </decision>
+
+  <decision id="parkingFeeDecision" name="Parking Fee">
+    <variable id="parkingFeeVariable" name="Parking Fee" typeRef="number"/>
+    <informationRequirement id="parkingFeeNeedsDuration">
+      <requiredDecision href="#parkingDurationDecision"/>
+    </informationRequirement>
+    <decisionTable id="parkingFeeTable" hitPolicy="FIRST">
+      <input id="durationColumn" label="Stay">
+        <inputExpression id="durationColumnExpression" typeRef="days and time duration">
+          <text>Parking Duration</text>
+        </inputExpression>
+      </input>
+      <output id="parkingFeeOutput" name="fee" typeRef="number"/>
+      <rule id="freeHalfHour">
+        <inputEntry id="freeHalfHourStay"><text>&lt;= duration("PT30M")</text></inputEntry>
+        <outputEntry id="freeHalfHourFee"><text>0.00</text></outputEntry>
+      </rule>
+      <rule id="upToTwoHours">
+        <inputEntry id="upToTwoHoursStay"><text>&lt;= duration("PT2H")</text></inputEntry>
+        <outputEntry id="upToTwoHoursFee"><text>3.00</text></outputEntry>
+      </rule>
+      <rule id="upToSixHours">
+        <inputEntry id="upToSixHoursStay"><text>&lt;= duration("PT6H")</text></inputEntry>
+        <outputEntry id="upToSixHoursFee"><text>8.00</text></outputEntry>
+      </rule>
+      <rule id="dayTicket">
+        <inputEntry id="dayTicketStay"><text>&lt;= duration("PT24H")</text></inputEntry>
+        <outputEntry id="dayTicketFee"><text>15.00</text></outputEntry>
+      </rule>
+      <rule id="longStay">
+        <inputEntry id="longStayStay"><text>-</text></inputEntry>
+        <outputEntry id="longStayFee"><text>30.00</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

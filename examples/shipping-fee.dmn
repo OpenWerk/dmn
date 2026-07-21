@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The shipping tariff of a small webshop, written as a decision table:
+
+    | # | Destination | Cart total | Fee   |
+    |===|=============|============|=======|
+    | 1 | "domestic"  |  < 50      |  4.90 |
+    | 2 | "domestic"  | >= 50      |  0.00 |  free shipping from 50
+    | 3 | "europe"    |  < 100     | 12.90 |
+    | 4 | "europe"    | >= 100     |  0.00 |  free shipping from 100
+    | 5 | "world"     |     -      | 24.90 |  flat rate
+
+  Hit policy UNIQUE: exactly one rule may match a given cart.
+
+  The destination column only allows "domestic", "europe" and "world" —
+  any other value is reported as an error diagnostic instead of silently
+  matching nothing.
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="shippingFee"
+             name="Shipping Fee"
+             namespace="https://openwerk.example/dmn/shipping-fee">
+
+  <inputData id="destinationInput" name="destination">
+    <variable id="destinationVariable" name="destination" typeRef="string"/>
+  </inputData>
+
+  <inputData id="cartTotalInput" name="cart total">
+    <variable id="cartTotalVariable" name="cart total" typeRef="number"/>
+  </inputData>
+
+  <decision id="shippingFeeDecision" name="Shipping Fee">
+    <variable id="shippingFeeVariable" name="Shipping Fee" typeRef="number"/>
+    <informationRequirement id="shippingFeeNeedsDestination">
+      <requiredInput href="#destinationInput"/>
+    </informationRequirement>
+    <informationRequirement id="shippingFeeNeedsCartTotal">
+      <requiredInput href="#cartTotalInput"/>
+    </informationRequirement>
+    <decisionTable id="shippingFeeTable" hitPolicy="UNIQUE">
+      <input id="destinationColumn" label="Destination">
+        <inputExpression id="destinationColumnExpression" typeRef="string">
+          <text>destination</text>
+        </inputExpression>
+        <inputValues id="destinationAllowedValues">
+          <text>"domestic","europe","world"</text>
+        </inputValues>
+      </input>
+      <input id="cartTotalColumn" label="Cart total">
+        <inputExpression id="cartTotalColumnExpression" typeRef="number">
+          <text>cart total</text>
+        </inputExpression>
+      </input>
+      <output id="feeOutput" name="fee" typeRef="number"/>
+      <rule id="domesticSmallCart">
+        <inputEntry id="domesticSmallCartDestination"><text>"domestic"</text></inputEntry>
+        <inputEntry id="domesticSmallCartTotal"><text>&lt; 50</text></inputEntry>
+        <outputEntry id="domesticSmallCartFee"><text>4.90</text></outputEntry>
+      </rule>
+      <rule id="domesticFree">
+        <inputEntry id="domesticFreeDestination"><text>"domestic"</text></inputEntry>
+        <inputEntry id="domesticFreeTotal"><text>&gt;= 50</text></inputEntry>
+        <outputEntry id="domesticFreeFee"><text>0.00</text></outputEntry>
+      </rule>
+      <rule id="europeSmallCart">
+        <inputEntry id="europeSmallCartDestination"><text>"europe"</text></inputEntry>
+        <inputEntry id="europeSmallCartTotal"><text>&lt; 100</text></inputEntry>
+        <outputEntry id="europeSmallCartFee"><text>12.90</text></outputEntry>
+      </rule>
+      <rule id="europeFree">
+        <inputEntry id="europeFreeDestination"><text>"europe"</text></inputEntry>
+        <inputEntry id="europeFreeTotal"><text>&gt;= 100</text></inputEntry>
+        <outputEntry id="europeFreeFee"><text>0.00</text></outputEntry>
+      </rule>
+      <rule id="worldFlat">
+        <inputEntry id="worldFlatDestination"><text>"world"</text></inputEntry>
+        <inputEntry id="worldFlatTotal"><text>-</text></inputEntry>
+        <outputEntry id="worldFlatFee"><text>24.90</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             xmlns:dmndi="https://www.omg.org/spec/DMN/20230324/DMNDI/"
+             xmlns:dc="http://www.omg.org/spec/DMN/20180521/DC/"
+             id="fees"
+             name="Fees"
+             namespace="https://openwerk.example/dmn/fees">
+
+  <itemDefinition id="tApplicant" name="tApplicant">
+    <itemComponent id="tApplicant-age" name="age">
+      <typeRef>number</typeRef>
+    </itemComponent>
+    <itemComponent id="tApplicant-income" name="income">
+      <typeRef>number</typeRef>
+    </itemComponent>
+  </itemDefinition>
+
+  <inputData id="applicantInput" name="applicant">
+    <variable id="applicantVariable" name="applicant" typeRef="tApplicant"/>
+  </inputData>
+
+  <decision id="riskCategory" name="Risk Category">
+    <variable id="riskCategoryVariable" name="Risk Category" typeRef="string"/>
+    <informationRequirement id="riskCategoryRequirement">
+      <requiredInput href="#applicantInput"/>
+    </informationRequirement>
+    <decisionTable id="riskCategoryTable" hitPolicy="UNIQUE">
+      <input id="riskInputAge" label="Age">
+        <inputExpression id="riskInputAgeExpression" typeRef="number">
+          <text>applicant.age</text>
+        </inputExpression>
+      </input>
+      <input id="riskInputIncome" label="Income">
+        <inputExpression id="riskInputIncomeExpression" typeRef="number">
+          <text>applicant.income</text>
+        </inputExpression>
+      </input>
+      <output id="riskOutput" name="category" typeRef="string">
+        <outputValues id="riskOutputValues">
+          <text>"low","medium","high"</text>
+        </outputValues>
+      </output>
+      <rule id="riskRule1">
+        <inputEntry id="riskRule1Age"><text>&lt; 25</text></inputEntry>
+        <inputEntry id="riskRule1Income"><text>-</text></inputEntry>
+        <outputEntry id="riskRule1Out"><text>"high"</text></outputEntry>
+      </rule>
+      <rule id="riskRule2">
+        <inputEntry id="riskRule2Age"><text>[25..60]</text></inputEntry>
+        <inputEntry id="riskRule2Income"><text>&lt; 30000</text></inputEntry>
+        <outputEntry id="riskRule2Out"><text>"medium"</text></outputEntry>
+      </rule>
+      <rule id="riskRule3">
+        <inputEntry id="riskRule3Age"><text>[25..60]</text></inputEntry>
+        <inputEntry id="riskRule3Income"><text>&gt;= 30000</text></inputEntry>
+        <outputEntry id="riskRule3Out"><text>"low"</text></outputEntry>
+      </rule>
+      <rule id="riskRule4">
+        <inputEntry id="riskRule4Age"><text>&gt; 60</text></inputEntry>
+        <inputEntry id="riskRule4Income"><text>-</text></inputEntry>
+        <outputEntry id="riskRule4Out"><text>"medium"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="fee" name="Fee">
+    <variable id="feeVariable" name="Fee" typeRef="number"/>
+    <informationRequirement id="feeRequirement">
+      <requiredDecision href="#riskCategory"/>
+    </informationRequirement>
+    <decisionTable id="feeTable" hitPolicy="UNIQUE">
+      <input id="feeInput" label="Risk">
+        <inputExpression id="feeInputExpression" typeRef="string">
+          <text>Risk Category</text>
+        </inputExpression>
+      </input>
+      <output id="feeOutput" name="fee" typeRef="number"/>
+      <rule id="feeRule1">
+        <inputEntry id="feeRule1In"><text>"low"</text></inputEntry>
+        <outputEntry id="feeRule1Out"><text>100</text></outputEntry>
+      </rule>
+      <rule id="feeRule2">
+        <inputEntry id="feeRule2In"><text>"medium"</text></inputEntry>
+        <outputEntry id="feeRule2Out"><text>250.50</text></outputEntry>
+      </rule>
+      <rule id="feeRule3">
+        <inputEntry id="feeRule3In"><text>"high"</text></inputEntry>
+        <outputEntry id="feeRule3Out"><text>500</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="discountedFee" name="Discounted Fee">
+    <variable id="discountedFeeVariable" name="Discounted Fee" typeRef="number"/>
+    <informationRequirement id="discountedFeeRequirement">
+      <requiredDecision href="#fee"/>
+    </informationRequirement>
+    <literalExpression id="discountedFeeExpression">
+      <text>Fee * 0.9</text>
+    </literalExpression>
+  </decision>
+
+  <dmndi:DMNDI>
+    <dmndi:DMNDiagram id="diagram">
+      <dmndi:DMNShape id="shape1" dmnElementRef="riskCategory">
+        <dc:Bounds height="80" width="180" x="100" y="100"/>
+      </dmndi:DMNShape>
+    </dmndi:DMNDiagram>
+  </dmndi:DMNDI>
+</definitions>

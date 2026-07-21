@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testCases xmlns="http://www.omg.org/spec/DMN/20160719/testcase"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <modelName>does-not-exist.dmn</modelName>
+  <testCase id="001">
+    <resultNode name="Anything" type="decision">
+      <expected>
+        <value xsi:type="xsd:string">never</value>
+      </expected>
+    </resultNode>
+  </testCase>
+</testCases>

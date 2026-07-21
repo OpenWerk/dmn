@@ -1,0 +1,9 @@
+/build/
+/vendor/
+/composer.lock
+/tck-cl2-results.csv
+/.phpunit.cache/
+/.phpcs-cache
+/phpunit.xml
+/phpstan.neon
+/phpcs.xml

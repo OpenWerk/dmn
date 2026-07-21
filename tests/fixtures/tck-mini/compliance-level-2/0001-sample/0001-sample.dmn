@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="sample"
+             name="Sample"
+             namespace="https://openwerk.example/dmn/tck-sample">
+  <inputData id="nameInput" name="name">
+    <variable id="nameVariable" name="name" typeRef="string"/>
+  </inputData>
+  <decision id="greeting" name="Greeting">
+    <variable id="greetingVariable" name="Greeting" typeRef="string"/>
+    <informationRequirement id="greetingRequirement">
+      <requiredInput href="#nameInput"/>
+    </informationRequirement>
+    <literalExpression id="greetingExpression">
+      <text>"Hi " + name</text>
+    </literalExpression>
+  </decision>
+</definitions>

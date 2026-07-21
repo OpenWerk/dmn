@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testCases xmlns="http://www.omg.org/spec/DMN/20160719/testcase"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+           xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <modelName>0001-sample.dmn</modelName>
+  <testCase id="001">
+    <inputNode name="name">
+      <value xsi:type="xsd:string">Bob</value>
+    </inputNode>
+    <inputNode name="order">
+      <component name="total">
+        <value xsi:type="xsd:decimal">120.5</value>
+      </component>
+      <component name="express">
+        <value xsi:type="xsd:boolean">true</value>
+      </component>
+      <component name="note">
+        <value xsi:nil="true"/>
+      </component>
+      <component name="tags">
+        <list>
+          <item><value xsi:type="xsd:string">a</value></item>
+          <item><value xsi:type="xsd:string">b</value></item>
+        </list>
+      </component>
+    </inputNode>
+    <inputNode name="since">
+      <value xsi:type="xsd:date">2027-01-01</value>
+    </inputNode>
+    <inputNode name="membership">
+      <value xsi:type="xsd:duration">P2Y</value>
+    </inputNode>
+    <resultNode name="Greeting" type="decision">
+      <expected>
+        <value xsi:type="xsd:string">Hi Bob</value>
+      </expected>
+    </resultNode>
+  </testCase>
+  <testCase id="002">
+    <inputNode name="name">
+      <value xsi:type="xsd:string">Eve</value>
+    </inputNode>
+    <resultNode name="Greeting" type="decision">
+      <expected>
+        <value xsi:type="xsd:string">Hello Eve</value>
+      </expected>
+    </resultNode>
+  </testCase>
+</testCases>

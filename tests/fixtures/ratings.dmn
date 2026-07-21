@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/DMN/20180521/MODEL/"
+             id="ratings"
+             name="Ratings"
+             namespace="https://openwerk.example/dmn/ratings">
+
+  <inputData id="scoreInput" name="score">
+    <variable id="scoreVariable" name="score" typeRef="number"/>
+  </inputData>
+
+  <decision id="rating" name="Rating">
+    <variable id="ratingVariable" name="Rating" typeRef="string"/>
+    <informationRequirement>
+      <requiredInput href="#scoreInput"/>
+    </informationRequirement>
+    <decisionTable id="ratingTable" hitPolicy="PRIORITY">
+      <input id="ratingInput">
+        <inputExpression id="ratingInputExpression" typeRef="number">
+          <text>score</text>
+        </inputExpression>
+      </input>
+      <output id="ratingOutput" name="rating" typeRef="string">
+        <outputValues id="ratingOutputValues">
+          <text>"decline","refer","approve"</text>
+        </outputValues>
+      </output>
+      <rule id="declineRule">
+        <inputEntry id="declineEntry"><text>&lt; 400</text></inputEntry>
+        <outputEntry id="declineOutput"><text>"decline"</text></outputEntry>
+      </rule>
+      <rule id="referRule">
+        <inputEntry id="referEntry"><text>&lt; 600</text></inputEntry>
+        <outputEntry id="referOutput"><text>"refer"</text></outputEntry>
+      </rule>
+      <rule id="approveRule">
+        <inputEntry id="approveEntry"><text>-</text></inputEntry>
+        <outputEntry id="approveOutput"><text>"approve"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="fallback" name="Fallback">
+    <variable id="fallbackVariable" name="Fallback" typeRef="string"/>
+    <informationRequirement>
+      <requiredInput href="#scoreInput"/>
+    </informationRequirement>
+    <decisionTable id="fallbackTable" hitPolicy="FIRST">
+      <input id="fallbackInput">
+        <inputExpression id="fallbackInputExpression" typeRef="number">
+          <text>score</text>
+        </inputExpression>
+      </input>
+      <output id="fallbackOutput" name="grade" typeRef="string">
+        <defaultOutputEntry id="fallbackDefault"><text>"none"</text></defaultOutputEntry>
+      </output>
+      <rule id="eliteRule">
+        <inputEntry id="eliteEntry"><text>&gt; 1000</text></inputEntry>
+        <outputEntry id="eliteOutput"><text>"elite"</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>

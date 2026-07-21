@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="lazyLib"
+             name="Lazy Lib"
+             namespace="urn:lazy-lib">
+
+  <inputData id="pointsInput" name="points">
+    <variable id="pointsVariable" name="points" typeRef="number"/>
+  </inputData>
+
+  <decision id="levelDecision" name="Level">
+    <variable id="levelVariable" name="Level" typeRef="number"/>
+    <informationRequirement id="levelNeedsPoints">
+      <requiredInput href="#pointsInput"/>
+    </informationRequirement>
+    <literalExpression id="levelExpression">
+      <text>points * 10</text>
+    </literalExpression>
+  </decision>
+</definitions>

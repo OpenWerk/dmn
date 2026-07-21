@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="lazyMain"
+             name="Lazy Main"
+             namespace="urn:lazy-main">
+
+  <import namespace="urn:lazy-lib" name="lib"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+
+  <decision id="scaledLevel" name="Scaled Level">
+    <variable id="scaledLevelVariable" name="Scaled Level" typeRef="number"/>
+    <informationRequirement id="scaledNeedsLevel">
+      <requiredDecision href="urn:lazy-lib#levelDecision"/>
+    </informationRequirement>
+    <literalExpression id="scaledExpression">
+      <text>lib.Level + 1</text>
+    </literalExpression>
+  </decision>
+</definitions>

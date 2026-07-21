@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="importDeep"
+             name="Import Deep"
+             namespace="urn:import-deep">
+
+  <import namespace="urn:import-main" name="mid"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+
+  <decision id="chained" name="Chained">
+    <variable id="chainedVariable" name="Chained" typeRef="number"/>
+    <informationRequirement id="chainedNeedsBaseLevel">
+      <requiredDecision href="urn:import-base#baseLevel"/>
+    </informationRequirement>
+    <literalExpression id="chainedExpression">
+      <text>mid.lib.Base Level + 100</text>
+    </literalExpression>
+  </decision>
+</definitions>

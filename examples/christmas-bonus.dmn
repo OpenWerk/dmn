@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "How big is my Christmas bonus?" — payroll's model, which IMPORTS HR's
+  shared seniority rules (seniority.dmn) instead of copying them:
+
+    <import namespace="https://openwerk.example/dmn/seniority" name="hr" .../>
+
+  The imported decision is referenced by its qualified FEEL name
+  "hr.Seniority Level", and its input ("years of service") is supplied at
+  evaluation time through the importedInputs argument, keyed by the
+  imported model's namespace.
+
+    | # | hr.Seniority Level | Percent |
+    |===|====================|=========|
+    | 1 | "junior"           |   20    |
+    | 2 | "established"      |   50    |
+    | 3 | "veteran"          |   80    |
+
+    Christmas Bonus = monthly salary * Bonus Percent / 100
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="christmasBonus"
+             name="Christmas Bonus"
+             namespace="https://openwerk.example/dmn/christmas-bonus">
+
+  <import namespace="https://openwerk.example/dmn/seniority" name="hr"
+          importType="https://www.omg.org/spec/DMN/20230324/MODEL/"/>
+
+  <inputData id="salaryInput" name="monthly salary">
+    <variable id="salaryVariable" name="monthly salary" typeRef="number"/>
+  </inputData>
+
+  <decision id="bonusPercent" name="Bonus Percent">
+    <variable id="bonusPercentVariable" name="Bonus Percent" typeRef="number"/>
+    <informationRequirement id="percentNeedsLevel">
+      <requiredDecision href="https://openwerk.example/dmn/seniority#seniorityLevel"/>
+    </informationRequirement>
+    <decisionTable id="bonusPercentTable" hitPolicy="UNIQUE">
+      <input id="levelColumn" label="Seniority">
+        <inputExpression id="levelColumnExpression" typeRef="string">
+          <text>hr.Seniority Level</text>
+        </inputExpression>
+      </input>
+      <output id="percentOutput" name="percent" typeRef="number"/>
+      <rule id="juniorPercent">
+        <inputEntry id="juniorPercentLevel"><text>"junior"</text></inputEntry>
+        <outputEntry id="juniorPercentResult"><text>20</text></outputEntry>
+      </rule>
+      <rule id="establishedPercent">
+        <inputEntry id="establishedPercentLevel"><text>"established"</text></inputEntry>
+        <outputEntry id="establishedPercentResult"><text>50</text></outputEntry>
+      </rule>
+      <rule id="veteranPercent">
+        <inputEntry id="veteranPercentLevel"><text>"veteran"</text></inputEntry>
+        <outputEntry id="veteranPercentResult"><text>80</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+
+  <decision id="christmasBonusDecision" name="Christmas Bonus">
+    <variable id="christmasBonusVariable" name="Christmas Bonus" typeRef="number"/>
+    <informationRequirement id="bonusNeedsSalary">
+      <requiredInput href="#salaryInput"/>
+    </informationRequirement>
+    <informationRequirement id="bonusNeedsPercent">
+      <requiredDecision href="#bonusPercent"/>
+    </informationRequirement>
+    <literalExpression id="bonusExpression">
+      <text>monthly salary * Bonus Percent / 100</text>
+    </literalExpression>
+  </decision>
+</definitions>

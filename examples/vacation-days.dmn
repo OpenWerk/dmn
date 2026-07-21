@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  "How many vacation days do I get?" — a typical collective-agreement rule:
+  everyone starts with 24 days, and bonuses stack on top.
+
+    | # | Age        | Years of service | Days |
+    |===|============|==================|======|
+    | 1 |     -      |        -         |  24  |  base entitlement
+    | 2 | < 18,>= 60 |        -         |  +5  |  extra protection
+    | 3 |     -      |      >= 10       |  +2  |  loyalty bonus
+    | 4 |     -      |      >= 30       |  +3  |  on top of rule 3
+
+  Hit policy COLLECT with SUM aggregation: every matching rule contributes,
+  and the results are added up. A 61-year-old with 33 years of service
+  matches rules 1 + 2 + 3 + 4 = 34 days.
+
+  "< 18, >= 60" is one test: a comma-separated list matches if any entry
+  matches (under 18 *or* 60 and over).
+-->
+<definitions xmlns="https://www.omg.org/spec/DMN/20230324/MODEL/"
+             id="vacationDays"
+             name="Vacation Days"
+             namespace="https://openwerk.example/dmn/vacation-days">
+
+  <inputData id="ageInput" name="age">
+    <variable id="ageVariable" name="age" typeRef="number"/>
+  </inputData>
+
+  <inputData id="serviceInput" name="years of service">
+    <variable id="serviceVariable" name="years of service" typeRef="number"/>
+  </inputData>
+
+  <decision id="vacationDaysDecision" name="Vacation Days">
+    <variable id="vacationDaysVariable" name="Vacation Days" typeRef="number"/>
+    <informationRequirement id="vacationDaysNeedsAge">
+      <requiredInput href="#ageInput"/>
+    </informationRequirement>
+    <informationRequirement id="vacationDaysNeedsService">
+      <requiredInput href="#serviceInput"/>
+    </informationRequirement>
+    <decisionTable id="vacationDaysTable" hitPolicy="COLLECT" aggregation="SUM">
+      <input id="ageColumn" label="Age">
+        <inputExpression id="ageColumnExpression" typeRef="number">
+          <text>age</text>
+        </inputExpression>
+      </input>
+      <input id="serviceColumn" label="Years of service">
+        <inputExpression id="serviceColumnExpression" typeRef="number">
+          <text>years of service</text>
+        </inputExpression>
+      </input>
+      <output id="daysOutput" name="days" typeRef="number"/>
+      <rule id="baseEntitlement">
+        <inputEntry id="baseEntitlementAge"><text>-</text></inputEntry>
+        <inputEntry id="baseEntitlementService"><text>-</text></inputEntry>
+        <outputEntry id="baseEntitlementDays"><text>24</text></outputEntry>
+      </rule>
+      <rule id="youngOrSeniorBonus">
+        <inputEntry id="youngOrSeniorBonusAge"><text>&lt; 18, &gt;= 60</text></inputEntry>
+        <inputEntry id="youngOrSeniorBonusService"><text>-</text></inputEntry>
+        <outputEntry id="youngOrSeniorBonusDays"><text>5</text></outputEntry>
+      </rule>
+      <rule id="loyaltyBonus">
+        <inputEntry id="loyaltyBonusAge"><text>-</text></inputEntry>
+        <inputEntry id="loyaltyBonusService"><text>&gt;= 10</text></inputEntry>
+        <outputEntry id="loyaltyBonusDays"><text>2</text></outputEntry>
+      </rule>
+      <rule id="veteranBonus">
+        <inputEntry id="veteranBonusAge"><text>-</text></inputEntry>
+        <inputEntry id="veteranBonusService"><text>&gt;= 30</text></inputEntry>
+        <outputEntry id="veteranBonusDays"><text>3</text></outputEntry>
+      </rule>
+    </decisionTable>
+  </decision>
+</definitions>
