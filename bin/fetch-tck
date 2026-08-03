@@ -13,7 +13,7 @@ declare(strict_types=1);
  */
 
 const TCK_REPOSITORY = 'https://github.com/dmn-tck/tck';
-const TCK_COMMIT = '0dbcaf9b98bc3af4e36d44a7aed95e9e85703a13';
+const TCK_COMMIT = '2fb7f5a1e8b03788c60b362ac69750a3bb7d0aab';
 const TCK_DIR = 'build/tck';
 
 /**
